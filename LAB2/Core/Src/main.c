@@ -47,29 +47,30 @@ DAC_HandleTypeDef hdac1;
 UART_HandleTypeDef hlpuart1;
 
 /* USER CODE BEGIN PV */
-float DAC_V_Output=0;
-uint16_t DAC_Raw_Output = 0;
-uint16_t Raw_input=0;
-uint16_t V_input=0;
 float ADC_V_Output=0;
+
+float DAC_V_Output=0;
+uint16_t Raw_Output=0;
+uint16_t DAC_Raw=0;
+
+float Raw_input=0;
+uint16_t Mode_input=0;
 
 struct _ADC_tag
 {
-ADC_ChannelConfTypeDef Config;
-float data;
+	ADC_ChannelConfTypeDef Config;
+	float data;
 };
 
 struct _ADC_tag ADC1_Channel =
 {
-
-.Config.Channel = ADC_CHANNEL_1,
-.Config.Rank = ADC_REGULAR_RANK_1,
-.Config.SamplingTime = ADC_SAMPLETIME_640CYCLES_5,
-.Config.SingleDiff = ADC_SINGLE_ENDED,
-.Config.OffsetNumber = ADC_OFFSET_NONE,
-.Config.Offset = 0,
-.data = 0
-
+	.Config.Channel = ADC_CHANNEL_1,
+	.Config.Rank = ADC_REGULAR_RANK_1,
+	.Config.SamplingTime = ADC_SAMPLETIME_640CYCLES_5,
+	.Config.SingleDiff = ADC_SINGLE_ENDED,
+	.Config.OffsetNumber = ADC_OFFSET_NONE,
+	.Config.Offset = 0,
+	.data = 0
 };
 
 /* USER CODE END PV */
@@ -83,6 +84,9 @@ static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 void DAC_Update();
 void ADC_Read_blocking();
+void DAC_Raw_mode();
+void DAC_V_mode();
+void DAC_B1();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -130,6 +134,8 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+
   while (1)
   {
     /* USER CODE END WHILE */
@@ -137,9 +143,12 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  ADC_Read_blocking();
 	  DAC_Update();
+
   }
   /* USER CODE END 3 */
 }
+
+
 
 /**
   * @brief System Clock Configuration
@@ -393,16 +402,42 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void DAC_Update()
 {
-static timeStamp =0;
-if(HAL_GetTick()>timeStamp)
-{
-timeStamp = HAL_GetTick()+750;
+	static timeStamp =0;
+	if(HAL_GetTick()>timeStamp)
+	{
+		timeStamp = HAL_GetTick()+750;
+		DAC_Raw = Raw_input;
+		HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, DAC_Raw);
+		if(Mode_input == 0)
+		{
+			DAC_Raw_mode();
+		}
+		else if(Mode_input == 1)
+		{
+			DAC_V_mode();
+		}
+		DAC_B1();
 
-DAC_V_Output = Raw_input*0.80566;
-DAC_Raw_Output = V_input*1.24121212121;
-HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, DAC_V_Output);
-
+	}
 }
+
+void DAC_V_mode()
+{
+	DAC_V_Output = DAC_Raw*0.80566;
+}
+
+void DAC_Raw_mode()
+{
+	Raw_Output = DAC_Raw;
+	/*DAC_Raw_Output = V_input*1.24121212121;*/
+}
+
+void DAC_B1()
+{
+	if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == 1)
+	{
+		DAC_V_Output = ADC_V_Output;
+	}
 }
 
 
@@ -412,7 +447,6 @@ static uint32_t TimeStamp = 0;
 if( HAL_GetTick()<TimeStamp) return;
 TimeStamp = HAL_GetTick()+500;
 
-
 HAL_ADC_ConfigChannel(&hadc1, &ADC1_Channel.Config);
 HAL_ADC_Start(&hadc1);
 HAL_ADC_PollForConversion(&hadc1, 100);
@@ -420,9 +454,6 @@ ADC1_Channel.data = HAL_ADC_GetValue(&hadc1);
 HAL_ADC_Stop(&hadc1);
 
 ADC_V_Output = ADC1_Channel.data*3.22265625;
-
-
-
 
 }
 
