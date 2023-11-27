@@ -47,13 +47,16 @@ DAC_HandleTypeDef hdac1;
 UART_HandleTypeDef hlpuart1;
 
 /* USER CODE BEGIN PV */
-float DAC_Output=0;
-float Jimo=0;
+float DAC_V_Output=0;
+uint16_t DAC_Raw_Output = 0;
+uint16_t Raw_input=0;
+uint16_t V_input=0;
+float ADC_V_Output=0;
 
 struct _ADC_tag
 {
 ADC_ChannelConfTypeDef Config;
-uint16_t data;
+float data;
 };
 
 struct _ADC_tag ADC1_Channel =
@@ -395,8 +398,9 @@ if(HAL_GetTick()>timeStamp)
 {
 timeStamp = HAL_GetTick()+750;
 
-DAC_Output = Jimo/0.00080566;
-HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, DAC_Output);
+DAC_V_Output = Raw_input*0.80566;
+DAC_Raw_Output = V_input*1.24121212121;
+HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, DAC_V_Output);
 
 }
 }
@@ -407,14 +411,19 @@ void ADC_Read_blocking()
 static uint32_t TimeStamp = 0;
 if( HAL_GetTick()<TimeStamp) return;
 TimeStamp = HAL_GetTick()+500;
-for(int i=0;i<2;i++)
-{
-HAL_ADC_ConfigChannel(&hadc1, &ADC1_Channel[i].Config);
+
+
+HAL_ADC_ConfigChannel(&hadc1, &ADC1_Channel.Config);
 HAL_ADC_Start(&hadc1);
 HAL_ADC_PollForConversion(&hadc1, 100);
-ADC1_Channel[i].data = HAL_ADC_GetValue(&hadc1);
+ADC1_Channel.data = HAL_ADC_GetValue(&hadc1);
 HAL_ADC_Stop(&hadc1);
-}
+
+ADC_V_Output = ADC1_Channel.data*3.22265625;
+
+
+
+
 }
 
 /* USER CODE END 4 */
